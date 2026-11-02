@@ -141,15 +141,16 @@
   .setup a { color: var(--accent); }
   .setup .err { color: var(--s-stop); font-size: 14px; margin: 8px 0 0; }
   .setup .small { font-size: 13px; color: var(--muted); margin: 10px 0 0; text-align: center; }
-  .notebox { margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: var(--bg); font-size: 15px; line-height: 1.8; white-space: pre-wrap; }
-  .hint { margin-top: 16px; font-size: 13px; color: var(--muted); text-align: center; }
 </style>
 </head>
 <body>
 <div id="app"></div>
 <script>
 'use strict';
+const API = 'https://api.todoist.com/api/v1/';
+const PROJECT_NAME = 'متابعة موضوعات الاستشارات الشرعية';
 const STATUSES = ['قيد الدراسة', 'عند الجهة', 'عند الإدارة', 'بانتظار خطوة', 'لم يبدأ', 'متوقف'];
+const ALL_STATUS = STATUSES.concat(['مغلق']);
 const SC = { 'قيد الدراسة': 'study', 'عند الجهة': 'ext', 'عند الإدارة': 'mgmt', 'بانتظار خطوة': 'step', 'لم يبدأ': 'none', 'متوقف': 'stop' };
 const FOLLOW = ['عند الجهة', 'عند الإدارة', 'بانتظار خطوة', 'متوقف', 'لم يبدأ'];
 const MARKS = { 'تظليل أصفر': 'y', 'تظليل أخضر': 'g', 'نص أحمر': 'r' };
@@ -157,12 +158,11 @@ const TITLES = { dash: 'لوحة المتابعة', follow: 'ما يحتاج م�
 const nf = new Intl.NumberFormat('ar-SA-u-nu-arab');
 const N = (x) => nf.format(x);
 const rtf = new Intl.RelativeTimeFormat('ar-SA-u-nu-arab', { numeric: 'auto' });
-const dayFmt = new Intl.DateTimeFormat('ar-SA-u-ca-gregory-nu-arab', { day: 'numeric', month: 'long', timeZone: 'Asia/Riyadh' });
-const stampFmt = new Intl.DateTimeFormat('ar-SA-u-ca-gregory-nu-arab', { day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Riyadh' });
 
 const ICON = {
   refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/></svg>',
   gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
   close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   dash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="9" rx="2"/><rect x="13.5" y="3" width="7.5" height="5" rx="2"/><rect x="13.5" y="11" width="7.5" height="10" rx="2"/><rect x="3" y="15" width="7.5" height="6" rx="2"/></svg>',
   follow: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
@@ -170,12 +170,12 @@ const ICON = {
 };
 
 const store = {
-  get(k, d) { try { const v = localStorage.getItem('mt2.' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
-  set(k, v) { try { localStorage.setItem('mt2.' + k, JSON.stringify(v)); } catch (e) {} },
-  del(k) { try { localStorage.removeItem('mt2.' + k); } catch (e) {} },
+  get(k, d) { try { const v = localStorage.getItem('sar.' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('sar.' + k, JSON.stringify(v)); } catch (e) {} },
+  del(k) { try { localStorage.removeItem('sar.' + k); } catch (e) {} },
 };
 
-const S = { key: null, rows: [], updated: null, checkedAt: 0, tab: 'dash', emp: null, st: null, q: '', loading: false, error: null };
+const S = { token: null, projectId: null, data: { tasks: [], sections: [], done: [] }, at: 0, tab: 'dash', emp: null, st: null, q: '', loading: false, error: null };
 
 function h(tag, props, ...kids) {
   const el = document.createElement(tag);
@@ -200,7 +200,7 @@ function icon(name) {
   return s;
 }
 const pill = (s) => h('span', { class: 'pill c-' + (SC[s] || 'none') }, s);
-const markEl = (m) => (m && MARKS[m] ? h('span', { class: 'mark m-' + MARKS[m] }, m) : null);
+const markEl = (m) => (m ? h('span', { class: 'mark m-' + MARKS[m] }, m) : null);
 
 function toast(msg) {
   const t = h('div', { class: 'toast', role: 'status' }, msg);
@@ -208,6 +208,7 @@ function toast(msg) {
   requestAnimationFrame(() => t.classList.add('on'));
   setTimeout(() => { t.classList.remove('on'); setTimeout(() => t.remove(), 300); }, 2300);
 }
+
 function rel(ts) {
   const s = Math.round((ts - Date.now()) / 1000);
   if (Math.abs(s) < 45) return 'الآن';
@@ -218,58 +219,85 @@ function rel(ts) {
   return rtf.format(Math.round(hr / 24), 'day');
 }
 
-/* ---------- data: encrypted file next to the app ---------- */
-function bytesFrom(b64) {
-  let s = b64.replace(/-/g, '+').replace(/_/g, '/');
-  while (s.length % 4) s += '=';
-  const bin = atob(s);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+/* ---------- Todoist ---------- */
+async function api(path, opts) {
+  const o = opts || {};
+  const url = new URL(path, API);
+  if (o.params) for (const [k, v] of Object.entries(o.params)) if (v != null) url.searchParams.set(k, v);
+  const headers = { Authorization: 'Bearer ' + S.token };
+  if (o.body) headers['Content-Type'] = 'application/json';
+  let res;
+  try {
+    res = await fetch(url, { method: o.method || 'GET', headers, body: o.body ? JSON.stringify(o.body) : undefined, cache: 'no-store' });
+  } catch (e) {
+    const err = new Error('network'); err.kind = 'network'; throw err;
+  }
+  if (res.status === 401 || res.status === 403) { const err = new Error('auth'); err.kind = 'auth'; throw err; }
+  if (res.status === 404) { const err = new Error('notfound'); err.kind = 'notfound'; throw err; }
+  if (!res.ok) { const err = new Error('http ' + res.status); err.kind = 'http'; throw err; }
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+async function all(path, params, key) {
+  const k = key || 'results';
+  const out = [];
+  let cursor = null, i = 0;
+  do {
+    const r = await api(path, { params: Object.assign({}, params, { limit: 200, cursor }) });
+    out.push(...((r && r[k]) || []));
+    cursor = r && r.next_cursor;
+  } while (cursor && ++i < 15);
   return out;
 }
-async function decrypt(keyText, payload) {
-  const key = await crypto.subtle.importKey('raw', bytesFrom(keyText), 'AES-GCM', false, ['decrypt']);
-  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: bytesFrom(payload.iv) }, key, bytesFrom(payload.ct));
-  return JSON.parse(new TextDecoder().decode(plain));
+async function resolveProject() {
+  if (S.projectId) return S.projectId;
+  const projects = await all('projects', {});
+  const p = projects.find((x) => x.name === PROJECT_NAME);
+  if (!p) { const err = new Error('noproject'); err.kind = 'noproject'; throw err; }
+  S.projectId = p.id;
+  store.set('pid', p.id);
+  return p.id;
 }
-async function fetchPayload() {
-  let res;
-  try { res = await fetch('data.json?t=' + Date.now(), { cache: 'no-store' }); } catch (e) { const err = new Error('network'); err.kind = 'network'; throw err; }
-  if (!res.ok) { const err = new Error('http'); err.kind = 'network'; throw err; }
-  return res.json();
-}
-function apply(d) {
-  S.rows = Array.isArray(d.rows) ? d.rows : [];
-  S.updated = d.updated || null;
-}
-async function load() {
-  if (!S.key || S.loading) return;
+const iso = (d) => d.toISOString().replace(/\.\d+Z$/, 'Z');
+
+async function load(retried) {
+  if (!S.token || S.loading) return;
   S.loading = true;
+  S.error = null;
   paintTop();
   try {
-    const payload = await fetchPayload();
-    const d = await decrypt(S.key, payload);
-    store.set('payload', payload);
-    const prior = S.updated;
-    apply(d);
-    S.error = null;
-    S.checkedAt = Date.now();
-    if (prior && prior !== d.updated) toast('وصلت بيانات جديدة');
+    const pid = await resolveProject();
+    const now = new Date();
+    const since = new Date(now.getTime() - 7 * 864e5);
+    const [tasks, sections, done] = await Promise.all([
+      all('tasks', { project_id: pid }),
+      all('sections', { project_id: pid }),
+      all('tasks/completed/by_completion_date', { project_id: pid, since: iso(since), until: iso(now) }, 'items').catch(() => S.data.done || []),
+    ]);
+    S.data = { tasks, sections, done };
+    S.at = Date.now();
+    store.set('cache', { data: S.data, at: S.at });
   } catch (e) {
     S.loading = false;
-    if (e.name === 'OperationError') { store.del('key'); S.key = null; renderKey('المفتاح المحفوظ لا يطابق البيانات، فالصق المفتاح من جديد'); return; }
-    S.error = 'network';
+    if (e.kind === 'notfound' && !retried) { S.projectId = null; store.del('pid'); return load(true); }
+    if (e.kind === 'auth') { S.token = null; store.del('tdt'); renderSetup('رمز Todoist غير صالح أو انتهت صلاحيته، فالصق رمزًا جديدًا'); return; }
+    S.error = e.kind === 'noproject' ? 'noproject' : 'network';
   }
   S.loading = false;
   render();
 }
 
-const open = () => S.rows.filter((r) => r.status !== 'مغلق').map((r) => Object.assign({}, r, { status: STATUSES.includes(r.status) ? r.status : 'قيد الدراسة' }));
-const closed = () => S.rows.filter((r) => r.status === 'مغلق').sort((a, b) => (String(a.closed) < String(b.closed) ? 1 : -1));
+function topics() {
+  const name = new Map(S.data.sections.map((s) => [s.id, s.name]));
+  return S.data.tasks.filter((t) => !t.checked && !t.is_deleted).map((t) => {
+    const L = t.labels || [];
+    return { id: t.id, title: t.content, sid: t.section_id, emp: name.get(t.section_id) || 'بلا قسم', status: L.find((l) => STATUSES.includes(l)) || 'قيد الدراسة', mark: L.find((l) => l in MARKS) || '', note: t.description || '', labels: L, added: t.added_at || '' };
+  });
+}
 function employees(T) {
-  const m = new Map();
+  const m = new Map(S.data.sections.map((s) => [s.name, { emp: s.name, sid: s.id, total: 0, by: {} }]));
   for (const t of T) {
-    if (!m.has(t.emp)) m.set(t.emp, { emp: t.emp, total: 0, by: {} });
+    if (!m.has(t.emp)) m.set(t.emp, { emp: t.emp, sid: t.sid, total: 0, by: {} });
     const r = m.get(t.emp);
     r.total += 1;
     r.by[t.status] = (r.by[t.status] || 0) + 1;
@@ -278,29 +306,31 @@ function employees(T) {
 }
 
 /* ---------- shell ---------- */
-let $title, $sub, $main, $tabs, $refresh;
+let $top, $title, $sub, $main, $tabs, $refresh, $add;
 const isStandalone = () => window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
 
 function renderShell() {
   $title = h('h1');
-  $refresh = h('button', { class: 'ib', 'aria-label': 'التحقق من التحديثات', onclick: () => load() }, icon('refresh'));
+  $refresh = h('button', { class: 'ib', 'aria-label': 'تحديث', onclick: () => load() }, icon('refresh'));
+  $add = h('button', { class: 'ib', 'aria-label': 'إضافة موضوع', onclick: openAdd }, icon('plus'));
   const gear = h('button', { class: 'ib', 'aria-label': 'الإعدادات', onclick: openSettings }, icon('gear'));
   $sub = h('div', { class: 'sub' });
-  const top = h('header', { class: 'top' }, h('div', { class: 'top-row' }, $title, $refresh, gear), $sub);
+  $top = h('header', { class: 'top' }, h('div', { class: 'top-row' }, $title, $add, $refresh, gear), $sub);
   $main = h('main');
   $tabs = h('nav', { class: 'tabs', 'aria-label': 'الأقسام' },
     ['dash', 'follow', 'all'].map((k) => h('button', { class: 'tab', 'data-k': k, onclick: () => go(k) }, icon(k), { dash: 'اللوحة', follow: 'المتابعة', all: 'الموضوعات' }[k])));
-  document.getElementById('app').replaceChildren(top, $main, $tabs);
+  document.getElementById('app').replaceChildren($top, $main, $tabs);
 }
+
 function paintTop() {
   if (!$title) return;
   $title.textContent = TITLES[S.tab];
+  $add.style.display = S.tab === 'all' ? '' : 'none';
   $refresh.classList.toggle('spin', S.loading);
-  $sub.textContent = S.loading ? 'جارٍ التحقق من التحديثات…'
-    : S.error === 'network' ? 'دون اتصال، والمعروض آخر نسخة محفوظة'
-    : S.updated ? 'حُدِّثت البيانات ' + rel(new Date(S.updated).getTime()) : '';
+  $sub.textContent = S.loading ? 'جارٍ التحديث…' : S.error === 'network' ? 'تعذّر الاتصال، والمعروض آخر نسخة محفوظة' : S.at ? 'آخر تحديث ' + rel(S.at) : '';
   $tabs.querySelectorAll('.tab').forEach((b) => (b.dataset.k === S.tab ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current')));
 }
+
 function go(tab, f) {
   S.tab = tab;
   store.set('tab', tab);
@@ -308,35 +338,39 @@ function go(tab, f) {
   render();
   window.scrollTo(0, 0);
 }
+
 function render() {
   if (!$main) return;
   paintTop();
-  if (!S.updated) {
-    $main.replaceChildren(h('div', { class: 'empty' }, S.loading ? 'جارٍ تحميل الموضوعات…' : 'تعذّر تحميل البيانات، فتأكد من الاتصال ثم اضغط زر التحديث'));
-    return;
-  }
-  $main.replaceChildren(S.tab === 'dash' ? viewDash() : S.tab === 'follow' ? viewFollow() : viewAll());
+  const parts = [];
+  if (S.error === 'noproject') parts.push(h('div', { class: 'banner' }, 'لم أجد في حسابك مشروعًا باسم «' + PROJECT_NAME + '»'));
+  else if (S.error === 'network' && !S.at) parts.push(h('div', { class: 'banner' }, 'تعذّر الوصول إلى Todoist، فتأكد من الاتصال ثم اضغط زر التحديث'));
+  if (!S.at && S.loading) parts.push(h('div', { class: 'empty' }, 'جارٍ تحميل الموضوعات…'));
+  else if (S.at) parts.push(S.tab === 'dash' ? viewDash() : S.tab === 'follow' ? viewFollow() : viewAll());
+  $main.replaceChildren(...parts);
 }
 
 /* ---------- views ---------- */
 function kpi(label, value, sub, onclick, wide) {
   return h('button', { class: 'kpi' + (wide ? ' wide' : ''), onclick }, h('span', { class: 'l' }, label), h('span', { class: 'v' }, N(value)), sub ? h('span', { class: 's' }, sub) : null);
 }
+
 function viewDash() {
-  const T = open();
+  const T = topics();
   const c = (s) => T.filter((t) => t.status === s).length;
   const ext = c('عند الجهة'), mg = c('عند الإدارة'), st = c('بانتظار خطوة');
   const E = employees(T);
   const max = Math.max(1, ...E.map((e) => e.total));
-  const C = closed();
+  const done = S.data.done || [];
+  const name = new Map(S.data.sections.map((s) => [s.id, s.name]));
   return h('div', null,
     h('div', { class: 'kpis' },
-      kpi('المفتوحة', T.length, 'لدى ' + N(E.length) + ' من الموظفين', () => go('all', { st: null, emp: null })),
+      kpi('المفتوحة', T.length, 'لدى ' + N(S.data.sections.length) + ' من الموظفين', () => go('all', { st: null, emp: null })),
       kpi('قيد الدراسة', c('قيد الدراسة'), 'بيد الفريق الآن', () => go('all', { st: 'قيد الدراسة', emp: null })),
       kpi('تنتظر جهة أخرى', ext + mg + st, 'عند الجهة ' + N(ext) + '، عند الإدارة ' + N(mg) + '، بانتظار خطوة ' + N(st), () => go('follow', { emp: null }), true),
       kpi('لم يُبدأ بها', c('لم يبدأ'), null, () => go('all', { st: 'لم يبدأ', emp: null })),
       kpi('متوقفة', c('متوقف'), null, () => go('all', { st: 'متوقف', emp: null })),
-      kpi('المغلقة', C.length, 'قائمتها أسفل الصفحة', () => { const el = document.getElementById('closed-card'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }, true)),
+      kpi('أُغلقت خلال أسبوع', done.length, 'خلال الأيام السبعة الأخيرة', null, true)),
     h('section', { class: 'card' },
       h('h2', null, 'توزيع الموضوعات على الموظفين'),
       h('p', { class: 'note' }, 'اضغط على موظف لعرض موضوعاته'),
@@ -345,40 +379,42 @@ function viewDash() {
         h('span', { class: 'bar', style: 'width:' + (e.total / max) * 100 + '%' }, STATUSES.filter((s) => e.by[s]).map((s) => h('span', { class: 'seg c-' + SC[s], style: 'flex:' + e.by[s] }))),
         h('span', { class: 'tt' }, N(e.total))))),
       h('div', { class: 'legend' }, STATUSES.map((s) => h('span', { class: 'c-' + SC[s] }, h('i', { class: 'dot' }), s)))),
-    h('section', { class: 'card', id: 'closed-card' },
-      h('h2', null, 'المغلقة'),
-      C.length
-        ? h('div', { class: 'list' }, C.map((t) => h('button', { class: 'item', onclick: () => openTask(t.id) }, h('span', { class: 't' }, t.title),
-            h('span', { class: 'm' }, h('span', null, t.emp), t.closed && !isNaN(new Date(t.closed)) ? h('span', null, dayFmt.format(new Date(t.closed))) : null))))
-        : h('p', { class: 'note' }, 'لم يُقفل موضوع بعد')));
+    h('section', { class: 'card' },
+      h('h2', null, 'أُغلقت خلال الأسبوع الأخير'),
+      done.length
+        ? h('div', { class: 'list' }, done.slice().sort((a, b) => (a.completed_at < b.completed_at ? 1 : -1)).map((t) => h('div', { class: 'item' }, h('span', { class: 't' }, t.content), h('span', { class: 'm' }, h('span', null, name.get(t.section_id) || ''), t.completed_at ? h('span', null, rel(new Date(t.completed_at).getTime())) : null))))
+        : h('p', { class: 'note' }, 'لم يُغلق شيء خلال الأسبوع الأخير')));
 }
+
 function empChips(T) {
   const E = employees(T);
   return h('div', { class: 'chips', role: 'group', 'aria-label': 'الموظف' },
     h('button', { class: 'chip', 'aria-pressed': String(!S.emp), onclick: () => { S.emp = null; render(); } }, 'الكل'),
     E.map((e) => h('button', { class: 'chip', 'aria-pressed': String(S.emp === e.emp), onclick: () => { S.emp = e.emp; render(); } }, e.emp, h('span', { class: 'num' }, N(e.total)))));
 }
+
 function itemEl(t, showEmp) {
   return h('button', { class: 'item', onclick: () => openTask(t.id) },
     h('span', { class: 't' }, t.title),
     h('span', { class: 'm' }, pill(t.status), showEmp ? h('span', null, t.emp) : null, markEl(t.mark), t.note && t.note !== t.status ? h('span', null, t.note) : null));
 }
+
 function viewFollow() {
-  const T = open();
-  const base = T.filter((t) => FOLLOW.includes(t.status));
-  const F = base.filter((t) => !S.emp || t.emp === S.emp);
+  const T = topics();
+  const F = T.filter((t) => FOLLOW.includes(t.status) && (!S.emp || t.emp === S.emp));
   const groups = FOLLOW.map((s) => ({ s, items: F.filter((t) => t.status === s) })).filter((g) => g.items.length);
   return h('div', null,
-    empChips(base),
+    empChips(T.filter((t) => FOLLOW.includes(t.status))),
     groups.length
       ? groups.map((g) => h('section', { class: 'group' },
           h('div', { class: 'gh c-' + SC[g.s] }, h('i', { class: 'dot' }), g.s, h('span', { class: 'num' }, N(g.items.length))),
           h('div', { class: 'card' }, h('div', { class: 'list' }, g.items.map((t) => itemEl(t, true))))))
       : h('div', { class: 'empty' }, 'لا شيء ينتظر المتابعة'));
 }
+
 let $list = null;
 function viewAll() {
-  const T = open();
+  const T = topics();
   const search = h('input', { class: 'search', type: 'search', placeholder: 'بحث في الموضوعات والملاحظات', 'aria-label': 'بحث', enterkeyhint: 'search' });
   search.value = S.q;
   search.addEventListener('input', () => { S.q = search.value; paintList(); });
@@ -393,10 +429,9 @@ function viewAll() {
 function paintList() {
   if (!$list) return;
   const q = S.q.trim();
-  const all = open();
-  const T = all.filter((t) => (!S.emp || t.emp === S.emp) && (!S.st || t.status === S.st) && (!q || (t.title + ' ' + t.note + ' ' + t.emp).includes(q)));
+  const T = topics().filter((t) => (!S.emp || t.emp === S.emp) && (!S.st || t.status === S.st) && (!q || (t.title + ' ' + t.note + ' ' + t.emp).includes(q)));
   if (!T.length) { $list.replaceChildren(h('div', { class: 'empty' }, 'لا توجد موضوعات مطابقة')); return; }
-  const order = employees(all).map((e) => e.emp);
+  const order = employees(topics()).map((e) => e.emp);
   const groups = order.map((emp) => ({ emp, items: T.filter((t) => t.emp === emp) })).filter((g) => g.items.length);
   $list.replaceChildren(...groups.map((g) => h('section', { class: 'group' },
     h('div', { class: 'gh' }, g.emp, h('span', { class: 'num' }, N(g.items.length))),
@@ -424,104 +459,204 @@ function sheet(children) {
   el.addEventListener('touchstart', (e) => { y0 = el.scrollTop <= 0 ? e.touches[0].clientY : null; }, { passive: true });
   el.addEventListener('touchend', (e) => { if (y0 != null && e.changedTouches[0].clientY - y0 > 90) close(); y0 = null; }, { passive: true });
   sheetClose = close;
+  return close;
 }
 const closeBtn = () => h('button', { class: 'ib', 'aria-label': 'إغلاق', onclick: () => sheetClose && sheetClose() }, icon('close'));
 
+function busy(btns, on) { btns.forEach((b) => { b.disabled = on; }); }
+function fail(e) { toast(e && e.kind === 'network' ? 'تعذّر الاتصال بـ Todoist' : 'لم يتم الحفظ، حاول مرة أخرى'); }
+
 function openTask(id) {
-  const r = S.rows.find((x) => x.id === id);
-  if (!r) return;
-  const isClosed = r.status === 'مغلق';
+  const t = topics().find((x) => x.id === id);
+  if (!t) return;
+  const note = h('textarea', { class: 'field', rows: 3, placeholder: 'ملاحظة على الموضوع' });
+  note.value = t.note;
+  const sbtns = STATUSES.map((s) => h('button', { class: 'sbtn c-' + SC[s], 'aria-pressed': String(s === t.status), onclick: () => setStatus(t, s) }, h('i', { class: 'dot' }), s));
+  const saveB = h('button', { class: 'btn ghost', onclick: () => saveNote(t, note.value) }, 'حفظ الملاحظة');
+  const doneB = h('button', { class: 'btn ok' }, 'أُنجز الموضوع، أغلقه');
+  let armed = false, timer = null;
+  doneB.addEventListener('click', () => {
+    if (!armed) { armed = true; doneB.textContent = 'اضغط مرة أخرى للتأكيد'; timer = setTimeout(() => { armed = false; doneB.textContent = 'أُنجز الموضوع، أغلقه'; }, 3500); return; }
+    clearTimeout(timer);
+    closeTask(t);
+  });
+  const ctrls = [...sbtns, saveB, doneB];
+  openTask.busy = (on) => busy(ctrls, on);
   sheet([
-    h('div', { class: 'sh-top' }, h('h2', null, r.title), closeBtn()),
-    h('div', { class: 'sh-meta' }, isClosed ? h('span', { class: 'pill c-none' }, 'مغلق') : pill(STATUSES.includes(r.status) ? r.status : 'قيد الدراسة'), h('span', null, r.emp), markEl(r.mark),
-      isClosed && r.closed && !isNaN(new Date(r.closed)) ? h('span', null, 'أُقفل ' + dayFmt.format(new Date(r.closed))) : null),
-    r.note ? h('div', { class: 'notebox' }, r.note) : null,
-    h('p', { class: 'hint' }, 'لتغيير الحالة أو الملاحظة أرسل التعديل في المحادثة مع Claude'),
+    h('div', { class: 'sh-top' }, h('h2', null, t.title), closeBtn()),
+    h('div', { class: 'sh-meta' }, pill(t.status), t.emp, markEl(t.mark)),
+    h('div', { class: 'lbl' }, 'الحالة'),
+    h('div', { class: 'sgrid' }, sbtns),
+    h('div', { class: 'lbl' }, 'الملاحظة'),
+    note,
+    h('div', { class: 'btns' }, saveB, doneB,
+      h('a', { class: 'btn ghost', href: 'https://app.todoist.com/app/task/' + encodeURIComponent(t.id), target: '_blank', rel: 'noopener' }, 'فتحه في Todoist')),
   ]);
 }
+
+function patchLocal(id, fields) {
+  const t = S.data.tasks.find((x) => x.id === id);
+  if (t) Object.assign(t, fields);
+  store.set('cache', { data: S.data, at: S.at });
+}
+
+async function setStatus(t, s) {
+  if (s === t.status) return;
+  const labels = t.labels.filter((l) => !ALL_STATUS.includes(l)).concat([s]);
+  openTask.busy(true);
+  try {
+    await api('tasks/' + encodeURIComponent(t.id), { method: 'POST', body: { labels } });
+    patchLocal(t.id, { labels });
+    sheetClose && sheetClose();
+    toast('الحالة الآن: ' + s);
+    render();
+  } catch (e) { openTask.busy(false); fail(e); }
+}
+
+async function saveNote(t, text) {
+  const description = text.trim();
+  if (description === t.note) { sheetClose && sheetClose(); return; }
+  openTask.busy(true);
+  try {
+    await api('tasks/' + encodeURIComponent(t.id), { method: 'POST', body: { description } });
+    patchLocal(t.id, { description });
+    sheetClose && sheetClose();
+    toast('حُفظت الملاحظة');
+    render();
+  } catch (e) { openTask.busy(false); fail(e); }
+}
+
+async function closeTask(t) {
+  openTask.busy(true);
+  try {
+    await api('tasks/' + encodeURIComponent(t.id) + '/close', { method: 'POST' });
+    const task = S.data.tasks.find((x) => x.id === t.id);
+    S.data.tasks = S.data.tasks.filter((x) => x.id !== t.id);
+    if (task) S.data.done = [Object.assign({}, task, { checked: true, completed_at: new Date().toISOString() })].concat(S.data.done || []);
+    store.set('cache', { data: S.data, at: S.at });
+    sheetClose && sheetClose();
+    toast('أُغلق الموضوع');
+    render();
+  } catch (e) { openTask.busy(false); fail(e); }
+}
+
+function openAdd() {
+  if (!S.data.sections.length) { toast('حدّث البيانات أولًا'); return; }
+  let status = 'قيد الدراسة';
+  const title = h('input', { class: 'field', type: 'text', placeholder: 'عنوان الموضوع', enterkeyhint: 'next' });
+  const emp = h('select', { class: 'field', 'aria-label': 'الموظف' }, S.data.sections.map((s) => h('option', { value: s.id }, s.name)));
+  if (S.emp) { const s = S.data.sections.find((x) => x.name === S.emp); if (s) emp.value = s.id; }
+  const note = h('textarea', { class: 'field', rows: 2, placeholder: 'ملاحظة (اختيارية)' });
+  const sbtns = STATUSES.map((s) => h('button', { class: 'sbtn c-' + SC[s], 'aria-pressed': String(s === status), onclick: () => { status = s; sbtns.forEach((b, i) => b.setAttribute('aria-pressed', String(STATUSES[i] === s))); } }, h('i', { class: 'dot' }), s));
+  const save = h('button', { class: 'btn' }, 'إضافة الموضوع');
+  save.addEventListener('click', async () => {
+    const content = title.value.trim();
+    if (!content) { title.focus(); toast('اكتب عنوان الموضوع'); return; }
+    busy([save], true);
+    try {
+      const body = { content, project_id: S.projectId, section_id: emp.value, labels: [status] };
+      if (note.value.trim()) body.description = note.value.trim();
+      const created = await api('tasks', { method: 'POST', body });
+      if (created && created.id) { S.data.tasks.push(created); store.set('cache', { data: S.data, at: S.at }); }
+      sheetClose && sheetClose();
+      toast('أُضيف الموضوع');
+      render();
+    } catch (e) { busy([save], false); fail(e); }
+  });
+  sheet([
+    h('div', { class: 'sh-top' }, h('h2', null, 'موضوع جديد'), closeBtn()),
+    h('div', { class: 'lbl' }, 'العنوان'), title,
+    h('div', { class: 'lbl' }, 'الموظف'), emp,
+    h('div', { class: 'lbl' }, 'الحالة'), h('div', { class: 'sgrid' }, sbtns),
+    h('div', { class: 'lbl' }, 'الملاحظة'), note,
+    h('div', { class: 'btns' }, save),
+  ]);
+  setTimeout(() => title.focus(), 350);
+}
+
 function openSettings() {
-  const forget = h('button', { class: 'btn warn' }, 'نسيان المفتاح في هذا الجهاز');
+  const out = h('button', { class: 'btn warn' }, 'فصل الحساب وتغيير الرمز');
   let armed = false;
-  forget.addEventListener('click', () => {
-    if (!armed) { armed = true; forget.textContent = 'اضغط مرة أخرى للتأكيد'; return; }
-    store.del('key'); store.del('payload');
-    S.key = null; S.rows = []; S.updated = null;
+  out.addEventListener('click', () => {
+    if (!armed) { armed = true; out.textContent = 'اضغط مرة أخرى للتأكيد'; return; }
+    store.del('tdt'); store.del('pid'); store.del('cache');
+    S.token = null; S.projectId = null; S.data = { tasks: [], sections: [], done: [] }; S.at = 0;
     sheetClose && sheetClose(true);
-    renderKey();
+    renderSetup();
   });
   sheet([
     h('div', { class: 'sh-top' }, h('h2', null, 'الإعدادات'), closeBtn()),
     h('div', { class: 'card', style: 'margin-top:12px' },
-      h('div', { class: 'row' }, h('span', null, 'آخر تحديث للبيانات'), h('span', { class: 'muted' }, S.updated ? stampFmt.format(new Date(S.updated)) : 'لا بيانات')),
-      h('div', { class: 'row' }, h('span', null, 'آخر تحقق'), h('span', { class: 'muted' }, S.checkedAt ? rel(S.checkedAt) : 'لم يتم بعد')),
-      h('div', { class: 'row' }, h('span', null, 'الحماية'), h('span', { class: 'muted' }, 'البيانات مشفرة ولا تُفتح إلا بالمفتاح'))),
+      h('div', { class: 'row' }, h('span', null, 'المشروع'), h('span', { class: 'muted' }, PROJECT_NAME)),
+      h('div', { class: 'row' }, h('span', null, 'آخر تحديث'), h('span', { class: 'muted' }, S.at ? rel(S.at) : 'لم يُحدَّث بعد')),
+      h('div', { class: 'row' }, h('span', null, 'الربط'), h('span', { class: 'muted' }, 'رمز Todoist محفوظ في هذا الجهاز فقط'))),
     h('div', { class: 'btns' },
-      h('button', { class: 'btn', onclick: () => { sheetClose && sheetClose(); load(); } }, 'التحقق من التحديثات'),
-      forget),
+      h('button', { class: 'btn', onclick: () => { sheetClose && sheetClose(); load(); } }, 'تحديث الآن'),
+      h('a', { class: 'btn ghost', href: 'https://app.todoist.com/app/project/' + encodeURIComponent(S.projectId || ''), target: '_blank', rel: 'noopener' }, 'فتح المشروع في Todoist'),
+      out),
   ]);
 }
 
-/* ---------- key entry ---------- */
-function renderKey(msg) {
+/* ---------- setup ---------- */
+function renderSetup(msg) {
   $main = null; $title = null;
-  const inp = h('input', { class: 'search', type: 'text', autocomplete: 'off', autocapitalize: 'off', autocorrect: 'off', spellcheck: 'false', placeholder: 'الصق المفتاح هنا', dir: 'ltr', 'aria-label': 'مفتاح الفتح' });
+  const inp = h('input', { class: 'search', type: 'password', autocomplete: 'off', autocapitalize: 'off', autocorrect: 'off', spellcheck: 'false', placeholder: 'الصق رمز API هنا', dir: 'ltr', 'aria-label': 'رمز API' });
   const err = h('p', { class: 'err' }, msg || '');
-  const btn = h('button', { class: 'btn', style: 'margin-top:12px' }, 'فتح');
+  const btn = h('button', { class: 'btn', style: 'margin-top:12px' }, 'ربط ومتابعة');
   btn.addEventListener('click', async () => {
-    const v = inp.value.trim().replace(/^.*#k=/, '');
-    if (!v) { err.textContent = 'الصق المفتاح أولًا'; return; }
+    const v = inp.value.trim();
+    if (!v) { err.textContent = 'الصق الرمز أولًا'; return; }
     btn.disabled = true; btn.textContent = 'جارٍ التحقق…'; err.textContent = '';
+    S.token = v; S.projectId = null;
     try {
-      const payload = await fetchPayload();
-      const d = await decrypt(v, payload);
-      store.set('key', v); store.set('payload', payload);
-      S.key = v; apply(d); S.checkedAt = Date.now(); S.error = null;
-      start(true);
+      await resolveProject();
+      store.set('tdt', v);
+      start();
     } catch (e) {
-      btn.disabled = false; btn.textContent = 'فتح';
-      err.textContent = e.kind === 'network' ? 'تعذّر تحميل البيانات، فتأكد من الاتصال ثم أعد المحاولة' : 'المفتاح غير صحيح، فتأكد من نسخه كاملًا';
+      S.token = null;
+      btn.disabled = false; btn.textContent = 'ربط ومتابعة';
+      err.textContent = e.kind === 'auth' ? 'الرمز غير صحيح، فتأكد من نسخه كاملًا' : e.kind === 'noproject' ? 'الرمز صحيح، لكن لم أجد مشروع «' + PROJECT_NAME + '» في هذا الحساب' : 'تعذّر الاتصال بـ Todoist، فتأكد من الإنترنت ثم أعد المحاولة';
     }
   });
-  const cards = [];
+  const steps = [];
   if (!isStandalone()) {
-    cards.push(h('section', { class: 'card' },
+    steps.push(h('section', { class: 'card' },
       h('h2', null, 'أولًا: ثبّته على الشاشة الرئيسية'),
       h('ol', null,
         h('li', null, 'اضغط زر المشاركة في شريط سفاري'),
         h('li', null, 'اختر «إضافة إلى الشاشة الرئيسية» ثم «إضافة»'),
-        h('li', null, 'افتح «SAR Dashboard» من الشاشة الرئيسية وأدخل المفتاح من داخله')),
-      h('p', { class: 'note', style: 'margin:0' }, 'المفتاح المُدخل داخل التطبيق المثبَّت يُحفظ له، أما المُدخل هنا فيبقى في سفاري وحده')));
+        h('li', null, 'افتح «SAR Dashboard» من الشاشة الرئيسية وأكمل الربط من داخله')),
+      h('p', { class: 'note', style: 'margin:0' }, 'الربط داخل التطبيق المثبَّت يحفظه له، أما الربط هنا فيبقى في سفاري وحده')));
   }
-  cards.push(h('section', { class: 'card' },
-    h('h2', null, isStandalone() ? 'أدخل مفتاح الفتح' : 'ثانيًا: أدخل مفتاح الفتح'),
-    h('p', { class: 'note' }, 'انسخ المفتاح من رسالة Claude في المحادثة والصقه هنا، ويكفي مرة واحدة على هذا الجهاز'),
+  steps.push(h('section', { class: 'card' },
+    h('h2', null, isStandalone() ? 'اربطه بحسابك في Todoist' : 'ثانيًا: اربطه بحسابك في Todoist'),
+    h('ol', null,
+      h('li', null, 'افتح ', h('a', { href: 'https://app.todoist.com/app/settings/integrations/developer', target: '_blank', rel: 'noopener' }, 'صفحة المطوِّر في إعدادات Todoist'), ' (الإعدادات، ثم التكاملات، ثم المطوِّر)'),
+      h('li', null, 'انسخ «رمز API» والصقه هنا')),
     inp, err, btn,
-    h('p', { class: 'small' }, 'البيانات مشفرة، فلا يقرؤها من فتح الرابط دون المفتاح')));
+    h('p', { class: 'small' }, 'يُحفظ الرمز في هذا الجهاز وحده، ولا يُرسَل إلا إلى Todoist')));
   document.getElementById('app').replaceChildren(h('div', { class: 'setup' },
     h('img', { class: 'logo', src: 'icons/icon-180.png', alt: '' }),
     h('h1', { dir: 'ltr' }, 'SAR Dashboard'),
     h('p', { class: 'lead' }, 'لوحة متابعة موضوعات فريق الاستشارات الشرعية'),
-    cards));
+    steps));
 }
 
 /* ---------- start ---------- */
-async function start(already) {
-  const m = location.hash.match(/k=([A-Za-z0-9_-]+)/);
-  if (m) { store.set('key', m[1]); history.replaceState(null, '', location.pathname + location.search); }
-  S.key = store.get('key', null);
+function start() {
+  S.token = store.get('tdt', null);
+  S.projectId = store.get('pid', null);
+  const c = store.get('cache', null);
+  if (c && c.data) { S.data = c.data; S.at = c.at || 0; }
   S.tab = store.get('tab', 'dash');
   if (!TITLES[S.tab]) S.tab = 'dash';
-  if (!S.key) { renderKey(); return; }
+  if (!S.token) { renderSetup(); return; }
   renderShell();
-  if (!already) {
-    const cached = store.get('payload', null);
-    if (cached) { try { apply(await decrypt(S.key, cached)); } catch (e) {} }
-  }
   render();
   load();
 }
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && S.key && $main && Date.now() - (S.checkedAt || 0) > 60000) load();
+  if (!document.hidden && S.token && $main && Date.now() - (S.at || 0) > 60000) load();
 });
 setInterval(() => { if ($main && !S.loading) paintTop(); }, 30000);
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
