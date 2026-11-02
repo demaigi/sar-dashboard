@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SAR Dashboard</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="SAR Dashboard">
+<meta name="theme-color" content="#f2f4f4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e1413" media="(prefers-color-scheme: dark)">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<style>
+  :root {
+    --bg: #f2f4f4; --card: #ffffff; --fg: #14201e; --muted: #5f6f6c; --line: #e2e7e6;
+    --accent: #0f766e; --accent-fg: #ffffff; --ok: #2e7d4f;
+    --s-study: #2f6fbd; --s-ext: #d9822b; --s-mgmt: #7b5cc4; --s-step: #13968a; --s-none: #8a9592; --s-stop: #d14343;
+    --mk-y: #e0b100; --mk-g: #3f9c55; --mk-r: #d14343;
+    --shadow: 0 0 0 1px var(--line);
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1413; --card: #18201f; --fg: #e8eeed; --muted: #94a3a0; --line: #27312f;
+      --accent: #2bb3a5; --accent-fg: #06201d; --ok: #3fae6d;
+      --s-study: #5b95dd; --s-ext: #eb9a49; --s-mgmt: #9d85e0; --s-step: #2bb3a5; --s-none: #7d8986; --s-stop: #ea6464;
+    }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); }
+  body { font-family: -apple-system, "SF Arabic", "Geeza Pro", system-ui, "Segoe UI", Tahoma, sans-serif; font-size: 16px; line-height: 1.55; -webkit-text-size-adjust: 100%; overscroll-behavior-y: none; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  .muted { color: var(--muted); }
+  .num { font-variant-numeric: tabular-nums; }
+
+  .c-study { --c: var(--s-study); } .c-ext { --c: var(--s-ext); } .c-mgmt { --c: var(--s-mgmt); }
+  .c-step { --c: var(--s-step); } .c-none { --c: var(--s-none); } .c-stop { --c: var(--s-stop); }
+  .m-y { --m: var(--mk-y); } .m-g { --m: var(--mk-g); } .m-r { --m: var(--mk-r); }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--c); flex: none; }
+  .mark { display: inline-flex; align-items: center; gap: 5px; }
+  .mark::before { content: ""; width: 10px; height: 10px; border-radius: 3px; background: var(--m); }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; padding: 1px 9px; border-radius: 999px; background: color-mix(in srgb, var(--c) 15%, transparent); color: var(--fg); white-space: nowrap; }
+  .pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
+
+  .top { position: sticky; top: 0; z-index: 5; padding: calc(env(safe-area-inset-top) + 10px) 16px 10px; background: color-mix(in srgb, var(--bg) 86%, transparent); -webkit-backdrop-filter: saturate(1.6) blur(18px); backdrop-filter: saturate(1.6) blur(18px); }
+  .top-row { display: flex; align-items: center; gap: 8px; max-width: 760px; margin: 0 auto; }
+  .top h1 { margin: 0; flex: 1; font-size: 27px; font-weight: 700; line-height: 1.25; }
+  .top .sub { max-width: 760px; margin: 2px auto 0; font-size: 13px; color: var(--muted); min-height: 1.3em; }
+  .ib { width: 38px; height: 38px; border-radius: 50%; border: 0; background: var(--card); box-shadow: var(--shadow); display: grid; place-items: center; flex: none; }
+  .ib svg { width: 20px; height: 20px; }
+  .ib.spin svg { animation: spin 0.9s linear infinite; }
+  @keyframes spin { to { transform: rotate(-360deg); } }
+
+  main { padding: 6px 16px calc(env(safe-area-inset-bottom) + 92px); max-width: 760px; margin: 0 auto; }
+
+  .tabs { position: fixed; bottom: 0; left: 0; right: 0; z-index: 6; display: flex; padding: 6px 8px calc(env(safe-area-inset-bottom) + 4px); border-top: 1px solid var(--line); background: color-mix(in srgb, var(--card) 88%, transparent); -webkit-backdrop-filter: saturate(1.6) blur(18px); backdrop-filter: saturate(1.6) blur(18px); }
+  .tab { flex: 1; border: 0; background: none; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 11px; color: var(--muted); padding: 3px 0; }
+  .tab svg { width: 25px; height: 25px; }
+  .tab[aria-current="page"] { color: var(--accent); font-weight: 600; }
+
+  .banner { border-radius: 12px; padding: 10px 12px; font-size: 14px; margin: 4px 0 12px; background: color-mix(in srgb, var(--s-ext) 16%, var(--card)); }
+
+  .kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .kpi { border: 0; border-radius: 16px; padding: 12px 14px; background: var(--card); box-shadow: var(--shadow); text-align: start; display: flex; flex-direction: column; gap: 1px; }
+  .kpi.wide { grid-column: 1 / -1; }
+  .kpi .l { font-size: 13px; color: var(--muted); }
+  .kpi .v { font-size: 33px; font-weight: 600; line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .kpi .s { font-size: 12.5px; color: var(--muted); }
+
+  .card { background: var(--card); border-radius: 16px; padding: 14px 16px; margin-top: 14px; box-shadow: var(--shadow); }
+  .card h2 { margin: 0; font-size: 17px; font-weight: 600; }
+  .card .note { margin: 2px 0 10px; font-size: 13px; color: var(--muted); }
+
+  .emps { display: flex; flex-direction: column; }
+  .emp { border: 0; background: none; padding: 9px 0; display: grid; grid-template-columns: 7.6em 1fr 2.2em; align-items: center; gap: 10px; text-align: start; border-bottom: 1px solid var(--line); }
+  .emp:last-child { border-bottom: 0; }
+  .emp .nm { font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .emp .tt { font-size: 14px; color: var(--muted); text-align: end; font-variant-numeric: tabular-nums; }
+  .emp.dim { opacity: 0.4; }
+  .bar { display: flex; gap: 2px; height: 14px; min-width: 2px; }
+  .seg { background: var(--c); border-radius: 3px; min-width: 3px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 12.5px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+  .list { display: flex; flex-direction: column; }
+  .item { border: 0; background: none; width: 100%; text-align: start; padding: 11px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
+  .item:last-child { border-bottom: 0; }
+  .item .t { font-size: 16px; line-height: 1.5; }
+  .item .m { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 13px; color: var(--muted); }
+  .group { margin-top: 14px; }
+  .gh { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; color: var(--muted); padding: 0 2px 4px; }
+  .gh .num { font-weight: 400; }
+  .group .card { margin-top: 0; padding-top: 2px; padding-bottom: 2px; }
+  .empty { text-align: center; color: var(--muted); padding: 34px 10px; font-size: 15px; }
+
+  .search { width: 100%; border: 0; border-radius: 12px; padding: 10px 12px; background: var(--card); box-shadow: var(--shadow); font-size: 16px; outline: none; }
+  .search:focus { box-shadow: 0 0 0 2px var(--accent); }
+  .chips { display: flex; gap: 8px; overflow-x: auto; padding: 2px 16px; margin: 10px -16px 0; scrollbar-width: none; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip { flex: none; border: 0; border-radius: 999px; padding: 6px 13px; font-size: 14px; background: var(--card); box-shadow: var(--shadow); display: inline-flex; align-items: center; gap: 6px; }
+  .chip .num { opacity: 0.6; }
+  .chip[aria-pressed="true"] { background: var(--fg); color: var(--bg); box-shadow: none; }
+
+  .scrim { position: fixed; inset: 0; z-index: 20; background: rgba(0, 0, 0, 0.36); opacity: 0; transition: opacity 0.25s; }
+  .scrim.on { opacity: 1; }
+  .sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; max-height: 90vh; overflow-y: auto; background: var(--card); border-radius: 20px 20px 0 0; padding: 8px 18px calc(env(safe-area-inset-bottom) + 18px); transform: translateY(105%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); max-width: 760px; margin: 0 auto; }
+  .sheet.on { transform: none; }
+  .grab { width: 38px; height: 5px; border-radius: 3px; background: var(--line); margin: 2px auto 10px; }
+  .sh-top { display: flex; align-items: flex-start; gap: 10px; }
+  .sh-top h2 { flex: 1; margin: 0; font-size: 20px; line-height: 1.45; }
+  .sh-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 14px; color: var(--muted); margin-top: 6px; }
+  .lbl { font-size: 13px; font-weight: 600; color: var(--muted); margin: 18px 0 8px; }
+  .sgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .sbtn { border: 0; border-radius: 12px; padding: 11px 12px; background: var(--bg); display: flex; align-items: center; gap: 8px; font-size: 15px; text-align: start; }
+  .sbtn[aria-pressed="true"] { background: color-mix(in srgb, var(--c) 14%, var(--card)); box-shadow: inset 0 0 0 2px var(--c); font-weight: 600; }
+  .field { width: 100%; border: 0; border-radius: 12px; padding: 11px 12px; background: var(--bg); font-size: 16px; outline: none; resize: vertical; }
+  .field:focus { box-shadow: inset 0 0 0 2px var(--accent); }
+  .btns { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+  .btn { display: block; width: 100%; border: 0; border-radius: 14px; padding: 13px; font-size: 16px; font-weight: 600; text-align: center; text-decoration: none; background: var(--accent); color: var(--accent-fg); }
+  .btn.ok { background: var(--ok); color: #ffffff; }
+  .btn.ghost { background: var(--bg); color: var(--fg); }
+  .btn.warn { background: var(--s-stop); color: #ffffff; }
+  .btn:disabled { opacity: 0.55; }
+  .row { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+  .row:last-child { border-bottom: 0; }
+
+  .toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 84px); z-index: 30; transform: translate(-50%, 16px); opacity: 0; transition: opacity 0.2s, transform 0.2s; background: var(--fg); color: var(--bg); padding: 9px 16px; border-radius: 999px; font-size: 14px; white-space: nowrap; }
+  .toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+  .setup { max-width: 520px; margin: 0 auto; padding: calc(env(safe-area-inset-top) + 34px) 18px calc(env(safe-area-inset-bottom) + 30px); }
+  .setup .logo { width: 76px; height: 76px; border-radius: 18px; display: block; margin: 0 auto 14px; }
+  .setup h1 { text-align: center; font-size: 23px; margin: 0; line-height: 1.4; }
+  .setup .lead { text-align: center; color: var(--muted); margin: 8px 0 6px; font-size: 15px; }
+  .setup ol { list-style-type: arabic-indic; margin: 6px 0 12px; padding-inline-start: 1.3em; line-height: 1.9; font-size: 15px; }
+  .setup a { color: var(--accent); }
+  .setup .err { color: var(--s-stop); font-size: 14px; margin: 8px 0 0; }
+  .setup .small { font-size: 13px; color: var(--muted); margin: 10px 0 0; text-align: center; }
+  .notebox { margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: var(--bg); font-size: 15px; line-height: 1.8; white-space: pre-wrap; }
+  .hint { margin-top: 16px; font-size: 13px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+'use strict';
+const STATUSES = ['قيد الدراسة', 'عند الجهة', 'عند الإدارة', 'بانتظار خطوة', 'لم يبدأ', 'متوقف'];
+const SC = { 'قيد الدراسة': 'study', 'عند الجهة': 'ext', 'عند الإدارة': 'mgmt', 'بانتظار خطوة': 'step', 'لم يبدأ': 'none', 'متوقف': 'stop' };
+const FOLLOW = ['عند الجهة', 'عند الإدارة', 'بانتظار خطوة', 'متوقف', 'لم يبدأ'];
+const MARKS = { 'تظليل أصفر': 'y', 'تظليل أخضر': 'g', 'نص أحمر': 'r' };
+const TITLES = { dash: 'لوحة المتابعة', follow: 'ما يحتاج متابعتك', all: 'الموضوعات' };
+const nf = new Intl.NumberFormat('ar-SA-u-nu-arab');
+const N = (x) => nf.format(x);
+const rtf = new Intl.RelativeTimeFormat('ar-SA-u-nu-arab', { numeric: 'auto' });
+const dayFmt = new Intl.DateTimeFormat('ar-SA-u-ca-gregory-nu-arab', { day: 'numeric', month: 'long', timeZone: 'Asia/Riyadh' });
+const stampFmt = new Intl.DateTimeFormat('ar-SA-u-ca-gregory-nu-arab', { day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Riyadh' });
+
+const ICON = {
+  refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+  close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  dash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="9" rx="2"/><rect x="13.5" y="3" width="7.5" height="5" rx="2"/><rect x="13.5" y="11" width="7.5" height="10" rx="2"/><rect x="3" y="15" width="7.5" height="6" rx="2"/></svg>',
+  follow: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  all: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2" fill="currentColor"/><circle cx="4.5" cy="12" r="1.2" fill="currentColor"/><circle cx="4.5" cy="18" r="1.2" fill="currentColor"/></svg>',
+};
+
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('mt2.' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('mt2.' + k, JSON.stringify(v)); } catch (e) {} },
+  del(k) { try { localStorage.removeItem('mt2.' + k); } catch (e) {} },
+};
+
+const S = { key: null, rows: [], updated: null, checkedAt: 0, tab: 'dash', emp: null, st: null, q: '', loading: false, error: null };
+
+function h(tag, props, ...kids) {
+  const el = document.createElement(tag);
+  if (props) {
+    for (const [k, v] of Object.entries(props)) {
+      if (v == null || v === false) continue;
+      if (k === 'class') el.className = v;
+      else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+      else el.setAttribute(k, v === true ? '' : String(v));
+    }
+  }
+  for (const c of kids.flat(Infinity)) {
+    if (c == null || c === false || c === '') continue;
+    el.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  }
+  return el;
+}
+function icon(name) {
+  const s = document.createElement('span');
+  s.style.display = 'contents';
+  s.innerHTML = ICON[name];
+  return s;
+}
+const pill = (s) => h('span', { class: 'pill c-' + (SC[s] || 'none') }, s);
+const markEl = (m) => (m && MARKS[m] ? h('span', { class: 'mark m-' + MARKS[m] }, m) : null);
+
+function toast(msg) {
+  const t = h('div', { class: 'toast', role: 'status' }, msg);
+  document.body.append(t);
+  requestAnimationFrame(() => t.classList.add('on'));
+  setTimeout(() => { t.classList.remove('on'); setTimeout(() => t.remove(), 300); }, 2300);
+}
+function rel(ts) {
+  const s = Math.round((ts - Date.now()) / 1000);
+  if (Math.abs(s) < 45) return 'الآن';
+  const m = Math.round(s / 60);
+  if (Math.abs(m) < 60) return rtf.format(m, 'minute');
+  const hr = Math.round(m / 60);
+  if (Math.abs(hr) < 24) return rtf.format(hr, 'hour');
+  return rtf.format(Math.round(hr / 24), 'day');
+}
+
+/* ---------- data: encrypted file next to the app ---------- */
+function bytesFrom(b64) {
+  let s = b64.replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  const bin = atob(s);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+async function decrypt(keyText, payload) {
+  const key = await crypto.subtle.importKey('raw', bytesFrom(keyText), 'AES-GCM', false, ['decrypt']);
+  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: bytesFrom(payload.iv) }, key, bytesFrom(payload.ct));
+  return JSON.parse(new TextDecoder().decode(plain));
+}
+async function fetchPayload() {
+  let res;
+  try { res = await fetch('data.json?t=' + Date.now(), { cache: 'no-store' }); } catch (e) { const err = new Error('network'); err.kind = 'network'; throw err; }
+  if (!res.ok) { const err = new Error('http'); err.kind = 'network'; throw err; }
+  return res.json();
+}
+function apply(d) {
+  S.rows = Array.isArray(d.rows) ? d.rows : [];
+  S.updated = d.updated || null;
+}
+async function load() {
+  if (!S.key || S.loading) return;
+  S.loading = true;
+  paintTop();
+  try {
+    const payload = await fetchPayload();
+    const d = await decrypt(S.key, payload);
+    store.set('payload', payload);
+    const prior = S.updated;
+    apply(d);
+    S.error = null;
+    S.checkedAt = Date.now();
+    if (prior && prior !== d.updated) toast('وصلت بيانات جديدة');
+  } catch (e) {
+    S.loading = false;
+    if (e.name === 'OperationError') { store.del('key'); S.key = null; renderKey('المفتاح المحفوظ لا يطابق البيانات، فالصق المفتاح من جديد'); return; }
+    S.error = 'network';
+  }
+  S.loading = false;
+  render();
+}
+
+const open = () => S.rows.filter((r) => r.status !== 'مغلق').map((r) => Object.assign({}, r, { status: STATUSES.includes(r.status) ? r.status : 'قيد الدراسة' }));
+const closed = () => S.rows.filter((r) => r.status === 'مغلق').sort((a, b) => (String(a.closed) < String(b.closed) ? 1 : -1));
+function employees(T) {
+  const m = new Map();
+  for (const t of T) {
+    if (!m.has(t.emp)) m.set(t.emp, { emp: t.emp, total: 0, by: {} });
+    const r = m.get(t.emp);
+    r.total += 1;
+    r.by[t.status] = (r.by[t.status] || 0) + 1;
+  }
+  return [...m.values()].sort((a, b) => b.total - a.total);
+}
+
+/* ---------- shell ---------- */
+let $title, $sub, $main, $tabs, $refresh;
+const isStandalone = () => window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+
+function renderShell() {
+  $title = h('h1');
+  $refresh = h('button', { class: 'ib', 'aria-label': 'التحقق من التحديثات', onclick: () => load() }, icon('refresh'));
+  const gear = h('button', { class: 'ib', 'aria-label': 'الإعدادات', onclick: openSettings }, icon('gear'));
+  $sub = h('div', { class: 'sub' });
+  const top = h('header', { class: 'top' }, h('div', { class: 'top-row' }, $title, $refresh, gear), $sub);
+  $main = h('main');
+  $tabs = h('nav', { class: 'tabs', 'aria-label': 'الأقسام' },
+    ['dash', 'follow', 'all'].map((k) => h('button', { class: 'tab', 'data-k': k, onclick: () => go(k) }, icon(k), { dash: 'اللوحة', follow: 'المتابعة', all: 'الموضوعات' }[k])));
+  document.getElementById('app').replaceChildren(top, $main, $tabs);
+}
+function paintTop() {
+  if (!$title) return;
+  $title.textContent = TITLES[S.tab];
+  $refresh.classList.toggle('spin', S.loading);
+  $sub.textContent = S.loading ? 'جارٍ التحقق من التحديثات…'
+    : S.error === 'network' ? 'دون اتصال، والمعروض آخر نسخة محفوظة'
+    : S.updated ? 'حُدِّثت البيانات ' + rel(new Date(S.updated).getTime()) : '';
+  $tabs.querySelectorAll('.tab').forEach((b) => (b.dataset.k === S.tab ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current')));
+}
+function go(tab, f) {
+  S.tab = tab;
+  store.set('tab', tab);
+  if (f) { if ('emp' in f) S.emp = f.emp; if ('st' in f) S.st = f.st; }
+  render();
+  window.scrollTo(0, 0);
+}
+function render() {
+  if (!$main) return;
+  paintTop();
+  if (!S.updated) {
+    $main.replaceChildren(h('div', { class: 'empty' }, S.loading ? 'جارٍ تحميل الموضوعات…' : 'تعذّر تحميل البيانات، فتأكد من الاتصال ثم اضغط زر التحديث'));
+    return;
+  }
+  $main.replaceChildren(S.tab === 'dash' ? viewDash() : S.tab === 'follow' ? viewFollow() : viewAll());
+}
+
+/* ---------- views ---------- */
+function kpi(label, value, sub, onclick, wide) {
+  return h('button', { class: 'kpi' + (wide ? ' wide' : ''), onclick }, h('span', { class: 'l' }, label), h('span', { class: 'v' }, N(value)), sub ? h('span', { class: 's' }, sub) : null);
+}
+function viewDash() {
+  const T = open();
+  const c = (s) => T.filter((t) => t.status === s).length;
+  const ext = c('عند الجهة'), mg = c('عند الإدارة'), st = c('بانتظار خطوة');
+  const E = employees(T);
+  const max = Math.max(1, ...E.map((e) => e.total));
+  const C = closed();
+  return h('div', null,
+    h('div', { class: 'kpis' },
+      kpi('المفتوحة', T.length, 'لدى ' + N(E.length) + ' من الموظفين', () => go('all', { st: null, emp: null })),
+      kpi('قيد الدراسة', c('قيد الدراسة'), 'بيد الفريق الآن', () => go('all', { st: 'قيد الدراسة', emp: null })),
+      kpi('تنتظر جهة أخرى', ext + mg + st, 'عند الجهة ' + N(ext) + '، عند الإدارة ' + N(mg) + '، بانتظار خطوة ' + N(st), () => go('follow', { emp: null }), true),
+      kpi('لم يُبدأ بها', c('لم يبدأ'), null, () => go('all', { st: 'لم يبدأ', emp: null })),
+      kpi('متوقفة', c('متوقف'), null, () => go('all', { st: 'متوقف', emp: null })),
+      kpi('المغلقة', C.length, 'قائمتها أسفل الصفحة', () => { const el = document.getElementById('closed-card'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }, true)),
+    h('section', { class: 'card' },
+      h('h2', null, 'توزيع الموضوعات على الموظفين'),
+      h('p', { class: 'note' }, 'اضغط على موظف لعرض موضوعاته'),
+      h('div', { class: 'emps' }, E.map((e) => h('button', { class: 'emp', onclick: () => go('all', { emp: e.emp, st: null }) },
+        h('span', { class: 'nm' }, e.emp),
+        h('span', { class: 'bar', style: 'width:' + (e.total / max) * 100 + '%' }, STATUSES.filter((s) => e.by[s]).map((s) => h('span', { class: 'seg c-' + SC[s], style: 'flex:' + e.by[s] }))),
+        h('span', { class: 'tt' }, N(e.total))))),
+      h('div', { class: 'legend' }, STATUSES.map((s) => h('span', { class: 'c-' + SC[s] }, h('i', { class: 'dot' }), s)))),
+    h('section', { class: 'card', id: 'closed-card' },
+      h('h2', null, 'المغلقة'),
+      C.length
+        ? h('div', { class: 'list' }, C.map((t) => h('button', { class: 'item', onclick: () => openTask(t.id) }, h('span', { class: 't' }, t.title),
+            h('span', { class: 'm' }, h('span', null, t.emp), t.closed && !isNaN(new Date(t.closed)) ? h('span', null, dayFmt.format(new Date(t.closed))) : null))))
+        : h('p', { class: 'note' }, 'لم يُقفل موضوع بعد')));
+}
+function empChips(T) {
+  const E = employees(T);
+  return h('div', { class: 'chips', role: 'group', 'aria-label': 'الموظف' },
+    h('button', { class: 'chip', 'aria-pressed': String(!S.emp), onclick: () => { S.emp = null; render(); } }, 'الكل'),
+    E.map((e) => h('button', { class: 'chip', 'aria-pressed': String(S.emp === e.emp), onclick: () => { S.emp = e.emp; render(); } }, e.emp, h('span', { class: 'num' }, N(e.total)))));
+}
+function itemEl(t, showEmp) {
+  return h('button', { class: 'item', onclick: () => openTask(t.id) },
+    h('span', { class: 't' }, t.title),
+    h('span', { class: 'm' }, pill(t.status), showEmp ? h('span', null, t.emp) : null, markEl(t.mark), t.note && t.note !== t.status ? h('span', null, t.note) : null));
+}
+function viewFollow() {
+  const T = open();
+  const base = T.filter((t) => FOLLOW.includes(t.status));
+  const F = base.filter((t) => !S.emp || t.emp === S.emp);
+  const groups = FOLLOW.map((s) => ({ s, items: F.filter((t) => t.status === s) })).filter((g) => g.items.length);
+  return h('div', null,
+    empChips(base),
+    groups.length
+      ? groups.map((g) => h('section', { class: 'group' },
+          h('div', { class: 'gh c-' + SC[g.s] }, h('i', { class: 'dot' }), g.s, h('span', { class: 'num' }, N(g.items.length))),
+          h('div', { class: 'card' }, h('div', { class: 'list' }, g.items.map((t) => itemEl(t, true))))))
+      : h('div', { class: 'empty' }, 'لا شيء ينتظر المتابعة'));
+}
+let $list = null;
+function viewAll() {
+  const T = open();
+  const search = h('input', { class: 'search', type: 'search', placeholder: 'بحث في الموضوعات والملاحظات', 'aria-label': 'بحث', enterkeyhint: 'search' });
+  search.value = S.q;
+  search.addEventListener('input', () => { S.q = search.value; paintList(); });
+  const stChips = h('div', { class: 'chips', role: 'group', 'aria-label': 'الحالة' },
+    h('button', { class: 'chip', 'aria-pressed': String(!S.st), onclick: () => { S.st = null; render(); } }, 'كل الحالات'),
+    STATUSES.map((s) => h('button', { class: 'chip c-' + SC[s], 'aria-pressed': String(S.st === s), onclick: () => { S.st = S.st === s ? null : s; render(); } }, h('i', { class: 'dot' }), s)));
+  $list = h('div');
+  const wrap = h('div', null, search, empChips(T), stChips, $list);
+  paintList();
+  return wrap;
+}
+function paintList() {
+  if (!$list) return;
+  const q = S.q.trim();
+  const all = open();
+  const T = all.filter((t) => (!S.emp || t.emp === S.emp) && (!S.st || t.status === S.st) && (!q || (t.title + ' ' + t.note + ' ' + t.emp).includes(q)));
+  if (!T.length) { $list.replaceChildren(h('div', { class: 'empty' }, 'لا توجد موضوعات مطابقة')); return; }
+  const order = employees(all).map((e) => e.emp);
+  const groups = order.map((emp) => ({ emp, items: T.filter((t) => t.emp === emp) })).filter((g) => g.items.length);
+  $list.replaceChildren(...groups.map((g) => h('section', { class: 'group' },
+    h('div', { class: 'gh' }, g.emp, h('span', { class: 'num' }, N(g.items.length))),
+    h('div', { class: 'card' }, h('div', { class: 'list' }, g.items.map((t) => itemEl(t, false)))))));
+}
+
+/* ---------- sheets ---------- */
+let sheetClose = null;
+function sheet(children) {
+  if (sheetClose) sheetClose(true);
+  const scrim = h('div', { class: 'scrim' });
+  const el = h('div', { class: 'sheet', role: 'dialog', 'aria-modal': 'true' }, h('div', { class: 'grab' }), children);
+  document.body.append(scrim, el);
+  document.body.style.overflow = 'hidden';
+  requestAnimationFrame(() => { scrim.classList.add('on'); el.classList.add('on'); });
+  const close = (instant) => {
+    sheetClose = null;
+    document.body.style.overflow = '';
+    if (instant) { scrim.remove(); el.remove(); return; }
+    scrim.classList.remove('on'); el.classList.remove('on');
+    setTimeout(() => { scrim.remove(); el.remove(); }, 300);
+  };
+  scrim.addEventListener('click', () => close());
+  let y0 = null;
+  el.addEventListener('touchstart', (e) => { y0 = el.scrollTop <= 0 ? e.touches[0].clientY : null; }, { passive: true });
+  el.addEventListener('touchend', (e) => { if (y0 != null && e.changedTouches[0].clientY - y0 > 90) close(); y0 = null; }, { passive: true });
+  sheetClose = close;
+}
+const closeBtn = () => h('button', { class: 'ib', 'aria-label': 'إغلاق', onclick: () => sheetClose && sheetClose() }, icon('close'));
+
+function openTask(id) {
+  const r = S.rows.find((x) => x.id === id);
+  if (!r) return;
+  const isClosed = r.status === 'مغلق';
+  sheet([
+    h('div', { class: 'sh-top' }, h('h2', null, r.title), closeBtn()),
+    h('div', { class: 'sh-meta' }, isClosed ? h('span', { class: 'pill c-none' }, 'مغلق') : pill(STATUSES.includes(r.status) ? r.status : 'قيد الدراسة'), h('span', null, r.emp), markEl(r.mark),
+      isClosed && r.closed && !isNaN(new Date(r.closed)) ? h('span', null, 'أُقفل ' + dayFmt.format(new Date(r.closed))) : null),
+    r.note ? h('div', { class: 'notebox' }, r.note) : null,
+    h('p', { class: 'hint' }, 'لتغيير الحالة أو الملاحظة أرسل التعديل في المحادثة مع Claude'),
+  ]);
+}
+function openSettings() {
+  const forget = h('button', { class: 'btn warn' }, 'نسيان المفتاح في هذا الجهاز');
+  let armed = false;
+  forget.addEventListener('click', () => {
+    if (!armed) { armed = true; forget.textContent = 'اضغط مرة أخرى للتأكيد'; return; }
+    store.del('key'); store.del('payload');
+    S.key = null; S.rows = []; S.updated = null;
+    sheetClose && sheetClose(true);
+    renderKey();
+  });
+  sheet([
+    h('div', { class: 'sh-top' }, h('h2', null, 'الإعدادات'), closeBtn()),
+    h('div', { class: 'card', style: 'margin-top:12px' },
+      h('div', { class: 'row' }, h('span', null, 'آخر تحديث للبيانات'), h('span', { class: 'muted' }, S.updated ? stampFmt.format(new Date(S.updated)) : 'لا بيانات')),
+      h('div', { class: 'row' }, h('span', null, 'آخر تحقق'), h('span', { class: 'muted' }, S.checkedAt ? rel(S.checkedAt) : 'لم يتم بعد')),
+      h('div', { class: 'row' }, h('span', null, 'الحماية'), h('span', { class: 'muted' }, 'البيانات مشفرة ولا تُفتح إلا بالمفتاح'))),
+    h('div', { class: 'btns' },
+      h('button', { class: 'btn', onclick: () => { sheetClose && sheetClose(); load(); } }, 'التحقق من التحديثات'),
+      forget),
+  ]);
+}
+
+/* ---------- key entry ---------- */
+function renderKey(msg) {
+  $main = null; $title = null;
+  const inp = h('input', { class: 'search', type: 'text', autocomplete: 'off', autocapitalize: 'off', autocorrect: 'off', spellcheck: 'false', placeholder: 'الصق المفتاح هنا', dir: 'ltr', 'aria-label': 'مفتاح الفتح' });
+  const err = h('p', { class: 'err' }, msg || '');
+  const btn = h('button', { class: 'btn', style: 'margin-top:12px' }, 'فتح');
+  btn.addEventListener('click', async () => {
+    const v = inp.value.trim().replace(/^.*#k=/, '');
+    if (!v) { err.textContent = 'الصق المفتاح أولًا'; return; }
+    btn.disabled = true; btn.textContent = 'جارٍ التحقق…'; err.textContent = '';
+    try {
+      const payload = await fetchPayload();
+      const d = await decrypt(v, payload);
+      store.set('key', v); store.set('payload', payload);
+      S.key = v; apply(d); S.checkedAt = Date.now(); S.error = null;
+      start(true);
+    } catch (e) {
+      btn.disabled = false; btn.textContent = 'فتح';
+      err.textContent = e.kind === 'network' ? 'تعذّر تحميل البيانات، فتأكد من الاتصال ثم أعد المحاولة' : 'المفتاح غير صحيح، فتأكد من نسخه كاملًا';
+    }
+  });
+  const cards = [];
+  if (!isStandalone()) {
+    cards.push(h('section', { class: 'card' },
+      h('h2', null, 'أولًا: ثبّته على الشاشة الرئيسية'),
+      h('ol', null,
+        h('li', null, 'اضغط زر المشاركة في شريط سفاري'),
+        h('li', null, 'اختر «إضافة إلى الشاشة الرئيسية» ثم «إضافة»'),
+        h('li', null, 'افتح «SAR Dashboard» من الشاشة الرئيسية وأدخل المفتاح من داخله')),
+      h('p', { class: 'note', style: 'margin:0' }, 'المفتاح المُدخل داخل التطبيق المثبَّت يُحفظ له، أما المُدخل هنا فيبقى في سفاري وحده')));
+  }
+  cards.push(h('section', { class: 'card' },
+    h('h2', null, isStandalone() ? 'أدخل مفتاح الفتح' : 'ثانيًا: أدخل مفتاح الفتح'),
+    h('p', { class: 'note' }, 'انسخ المفتاح من رسالة Claude في المحادثة والصقه هنا، ويكفي مرة واحدة على هذا الجهاز'),
+    inp, err, btn,
+    h('p', { class: 'small' }, 'البيانات مشفرة، فلا يقرؤها من فتح الرابط دون المفتاح')));
+  document.getElementById('app').replaceChildren(h('div', { class: 'setup' },
+    h('img', { class: 'logo', src: 'icons/icon-180.png', alt: '' }),
+    h('h1', { dir: 'ltr' }, 'SAR Dashboard'),
+    h('p', { class: 'lead' }, 'لوحة متابعة موضوعات فريق الاستشارات الشرعية'),
+    cards));
+}
+
+/* ---------- start ---------- */
+async function start(already) {
+  const m = location.hash.match(/k=([A-Za-z0-9_-]+)/);
+  if (m) { store.set('key', m[1]); history.replaceState(null, '', location.pathname + location.search); }
+  S.key = store.get('key', null);
+  S.tab = store.get('tab', 'dash');
+  if (!TITLES[S.tab]) S.tab = 'dash';
+  if (!S.key) { renderKey(); return; }
+  renderShell();
+  if (!already) {
+    const cached = store.get('payload', null);
+    if (cached) { try { apply(await decrypt(S.key, cached)); } catch (e) {} }
+  }
+  render();
+  load();
+}
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && S.key && $main && Date.now() - (S.checkedAt || 0) > 60000) load();
+});
+setInterval(() => { if ($main && !S.loading) paintTop(); }, 30000);
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+start();
+</script>
+</body>
+</html>
